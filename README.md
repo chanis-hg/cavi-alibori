@@ -67,6 +67,24 @@ Une plateforme qui :
 
 ---
 
+## Microservice Python (optionnel)
+
+Par défaut, la démo utilise le repli regex — aucune dépendance Python.
+
+Pour activer l'extraction par embeddings (deep learning) :
+
+    cd cavi-alibori-ml
+    python -m venv venv
+    venv\Scripts\activate
+    pip install -r requirements.txt
+    uvicorn main:app --reload --port 8001
+
+Puis, dans un autre terminal, lancer Laravel normalement :
+
+    php artisan serve
+
+Laravel détecte le microservice et l'utilise en priorité. Repli automatique sur regex si le service ne répond pas en 3 secondes.
+
 ## Prérequis
 
 - **PHP 8.2+** avec extensions `sqlite3`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`, `fileinfo`
