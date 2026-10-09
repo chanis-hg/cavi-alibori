@@ -2,14 +2,14 @@
 
 **Conversion de bulletins météo en consignes agricoles vocales, en langues locales (Bariba, Peulh, Dendi), pour les producteurs de l'Alibori (Bénin).**
 
-Hackathon IndabaX Bénin 2026 — thème Deep Learning.
+Hackathon IndabaX Bénin 2026 — thème Deep Learning — prototype réalisé en 72 h par une équipe de 4.
 
 ---
 
 ## Le problème
 
 Dans l'Alibori (Nord-Est du Bénin) :
-- **82 %** de la population est analphabète (INSAE).
+- **82 %** de la population est analphabète (INSAE, chiffre relayé par la presse : source primaire à confirmer).
 - Les bulletins météo sont en **français écrit**, format technique.
 - **Moins de 4 %** des terres agricoles sont irriguées (RNA).
 - Une poche de sécheresse non anticipée peut détruire **30 à 50 %** des rendements d'une commune.
@@ -36,10 +36,14 @@ Une plateforme qui :
 
 **Périmètre de démo** : une commune (Banikoara), un scénario (sécheresse sévère 8-14j → paillage du sol), une langue (Bariba), un canal (SVI simulé en page web).
 
+> **À propos de l'audio** : les trois segments de la démo (`storage/app/audio/segments/`) sont des **tonalités de substitution** (440 Hz = commune, 660 Hz = risque, 880 Hz = action) qui valident le mécanisme d'assemblage. Ils seront remplacés par les enregistrements d'un locuteur natif bariba, sans changer le code. Le message généré dure environ 6 secondes.
+
+![SVI simulé](demo-captures/Capture%20d'écran%202026-09-12%20032647.png)
+
 ### Lancer la démo
 
     # 1. Cloner
-    git clone https://github.com/TON_PSEUDO/cavi-alibori.git
+    git clone https://github.com/chanis-hg/cavi-alibori.git
     cd cavi-alibori
 
     # 2. Installer les dépendances PHP
@@ -50,12 +54,24 @@ Une plateforme qui :
     php artisan key:generate
 
     # 4. Créer la base SQLite
-    type nul > database\database.sqlite
-    php artisan migrate
-    php artisan db:seed
+    type nul > database\database.sqlite      # Windows
+    touch database/database.sqlite           # Linux / macOS
+    php artisan migrate --seed
 
     # 5. Lancer le serveur
     php artisan serve
+
+### (Optionnel) Lancer le microservice d'extraction par IA
+
+    cd cavi-alibori-ml
+    pip install -r requirements.txt
+    uvicorn main:app --port 8001
+
+Sans lui, la démo fonctionne quand même : l'extraction bascule automatiquement sur les expressions régulières. Détails dans `cavi-alibori-ml/README.md`.
+
+### Lancer les tests
+
+    php artisan test
 
 ### Accéder
 
@@ -87,7 +103,7 @@ Laravel détecte le microservice et l'utilise en priorité. Repli automatique su
 
 ## Prérequis
 
-- **PHP 8.2+** avec extensions `sqlite3`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`, `fileinfo`
+- **PHP 8.4+** (exigé par Laravel 13) avec extensions `sqlite3`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`, `fileinfo`
 - **Composer 2+**
 - **FFmpeg** dans le PATH (obligatoire pour la génération audio)
   - Windows : https://github.com/BtbN/FFmpeg-Builds/releases → `ffmpeg-master-latest-win64-gpl.zip`
@@ -105,7 +121,7 @@ Vérifier FFmpeg :
 
     Bulletin (texte brut)
         ↓
-    Extraction (regex, repli)          ← microservice Python optionnel (embeddings)
+    Extraction                         ← microservice Python (embeddings), repli regex automatique
         ↓
     DecisionEngine (règles ATDA)        ← table `regles_decision` validée par un agronome
         ↓
@@ -123,7 +139,7 @@ Détails complets dans `docs/architecture-technique.pdf` et `docs/analyse-marche
 
 | Couche | Choix |
 |---|---|
-| Backend | Laravel 11+ |
+| Backend | Laravel 13 |
 | Admin | Filament 3 |
 | Base (démo) | SQLite |
 | Base (prod) | MySQL / PostgreSQL |
@@ -131,14 +147,13 @@ Détails complets dans `docs/architecture-technique.pdf` et `docs/analyse-marche
 | Scheduler | Laravel Task Scheduling |
 | Audio | FFmpeg via `Symfony\Process` |
 | Extraction NLP | Regex (repli) + microservice Python (embeddings, optionnel) |
-| Tests | PHPUnit |
+| Tests | PHPUnit (moteur de règles, extraction, assemblage audio) |
 
 ---
 
 ## Structure du projet
 
     app/
-      Console/Commands/         Commandes Artisan (ingestion bulletins)
       DataTransferObjects/      ExtractionResult (DTO immuable)
       Jobs/                     ExtractVariablesJob, ApplyDecisionRuleJob
       Models/                   Bulletin, Commune, RegleDecision, SegmentAudio, MessageGenere...
@@ -151,6 +166,9 @@ Détails complets dans `docs/architecture-technique.pdf` et `docs/analyse-marche
       seeders/                  Données de démo (communes, règles, users)
     resources/views/svi/        Page SVI simulée
     routes/web.php              Routes /svi, /svi/ingest, /admin
+    storage/app/audio/segments/ Segments audio de démo (tonalités de substitution)
+    tests/Feature/Pipeline/     Tests du moteur de règles, de l'extraction et de l'audio
+    cavi-alibori-ml/            Microservice Python d'extraction par embeddings (FastAPI)
 
 ---
 
@@ -162,16 +180,19 @@ Détails complets dans `docs/architecture-technique.pdf` et `docs/analyse-marche
 - [x] Page SVI simulée avec ingestion live
 - [x] Panel Filament avec règles ATDA traçables
 - [x] FFmpeg installé et utilisé pour la concaténation audio
-- [x] Traçabilité complète (logs + BD)
+- [x] Traçabilité (logs + statut d'extraction du bulletin + message en base)
+- [x] Microservice Python d'extraction par embeddings, appelé en premier avec repli regex automatique
+- [x] Tests PHPUnit du moteur de règles, de l'extraction regex et de l'assemblage audio
 
 ### Feuille de route post-hackathon
 
-- [ ] Microservice Python d'extraction par embeddings (installé, non branché en démo)
+- [ ] Enregistrements audio par un locuteur natif bariba (remplacer les tonalités)
+- [ ] Calibrer les phrases-ancres du microservice sur de vrais bulletins Météo-Bénin
 - [ ] Diffusion WhatsApp réelle (Meta Cloud API)
 - [ ] Numéro vert réel (partenariat opérateur, hors scope 72h)
 - [ ] Multilangue complet (Peulh, Dendi) — nécessite enregistrements
 - [ ] Migration MySQL/PostgreSQL
-- [ ] Tests PHPUnit exhaustifs
+- [ ] Tests de bout en bout (job complet avec FFmpeg)
 - [ ] Métriques de succès (taux d'appels menant à une action suivie)
 
 ---
@@ -190,7 +211,7 @@ Détails complets dans `docs/architecture-technique.pdf` et `docs/analyse-marche
 
 - **Ismail AGOHOUNDJE**
 - **Souraka HAMIDA**
-- **Gaïus Chanis HONTONWAKOU**
+- **Gaïus Chanis HONTONWAKOU** — backend Laravel et traitement des bulletins
 - **Salem MIGAN**
 
 ---

@@ -25,3 +25,7 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Microservice Python
+/cavi-alibori-ml/venv/
+__pycache__/

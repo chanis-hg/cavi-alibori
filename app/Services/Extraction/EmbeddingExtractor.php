@@ -5,18 +5,15 @@ namespace App\Services\Extraction;
 use App\DataTransferObjects\ExtractionResult;
 use App\Models\Commune;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Http\Client\ConnectionException;
 
 final class EmbeddingExtractor implements NlpExtractorInterface
 {
-    // 3 secondes : au-delà, on considère le microservice endormi ou en
-    // panne, et on ne bloque pas le job en file d'attente pour ça.
-    private const TIMEOUT_SECONDES = 3;
-
     public function extract(string $texteBulletin): ExtractionResult
     {
-        $reponse = Http::timeout(self::TIMEOUT_SECONDES)
-            ->post('http://127.0.0.1:8000/classifier', [
+        // Au-delà du délai (3 s par défaut), on considère le microservice
+        // endormi ou en panne, et le job bascule sur le repli regex.
+        $reponse = Http::timeout(config('services.cavi_ml.timeout'))
+            ->post(rtrim(config('services.cavi_ml.url'), '/') . '/classifier', [
                 'texte' => $texteBulletin,
             ]);
 
@@ -27,7 +24,7 @@ final class EmbeddingExtractor implements NlpExtractorInterface
         return new ExtractionResult(
             communeId: $this->detecterCommune($texteBulletin), // toujours par regex, section 2 non gérée par le modèle
             niveauRisque: $donnees['niveau_risque'],
-            dureeJours: $this->detecterDuree($texteBulletin), // idem
+            dureeJours: $this->detecterDuree($texteBulletin) ?? 0, // idem ; 0 = durée non trouvée (même convention que le repli)
             confiance: $donnees['confiance'],
             methode: 'embeddings',
         );

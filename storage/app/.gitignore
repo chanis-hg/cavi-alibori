@@ -2,3 +2,7 @@
 !private/
 !public/
 !.gitignore
+!audio/
+audio/*
+!audio/segments/
+!audio/segments/*.mp3

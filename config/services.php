@@ -28,6 +28,13 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Microservice Python d'extraction par embeddings (cavi-alibori-ml).
+    // Port distinct de Laravel (php artisan serve utilise déjà le 8000).
+    'cavi_ml' => [
+        'url' => env('CAVI_ML_URL', 'http://127.0.0.1:8001'),
+        'timeout' => (int) env('CAVI_ML_TIMEOUT', 3),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

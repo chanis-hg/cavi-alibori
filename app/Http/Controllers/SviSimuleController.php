@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\MessageGenere;
+use App\Jobs\ExtractVariablesJob;
 use App\Models\Bulletin;
-use App\Services\Extraction\RegexFallbackExtractor;
-use App\Jobs\ApplyDecisionRuleJob;
+use App\Models\MessageGenere;
 
 class SviSimuleController extends Controller
 {
+    /**
+     * Bulletin de démonstration (scénario unique du hackathon).
+     * Format supposé : la granularité réelle des bulletins Météo-Bénin reste à confirmer.
+     */
+    private const BULLETIN_DEMO = 'Commune de Banikoara : sécheresse sévère, 12 jours.';
+
     public function index()
     {
         $messages = MessageGenere::with(['bulletin', 'regle.action'])
@@ -32,17 +37,16 @@ class SviSimuleController extends Controller
 
     public function ingest()
     {
-        $bulletin = \App\Models\Bulletin::create([
+        $bulletin = Bulletin::create([
             'source' => 'test',
-            'texte_brut' => 'Commune de Banikoara : sécheresse sévère, 12 jours.',
+            'texte_brut' => self::BULLETIN_DEMO,
             'recu_le' => now(),
             'statut_extraction' => 'en_attente',
         ]);
 
-        $extractor = new \App\Services\Extraction\RegexFallbackExtractor();
-        $resultat = $extractor->extract($bulletin->texte_brut);
-
-        \App\Jobs\ApplyDecisionRuleJob::dispatchSync($bulletin->id, $resultat);
+        // Même chemin que la production : microservice d'embeddings d'abord,
+        // repli regex automatique s'il ne répond pas.
+        ExtractVariablesJob::dispatchSync($bulletin);
 
         return redirect()->route('svi.index');
     }

@@ -40,6 +40,17 @@ class ExtractVariablesJob implements ShouldQueue
             $resultat = $extracteurRepli->extract($this->bulletin->texte_brut);
         }
 
+        // Traçabilité : on sait si l'extraction a produit un niveau de risque exploitable.
+        $this->bulletin->update([
+            'statut_extraction' => $resultat->niveauRisque === 'inconnu' ? 'echec' : 'extrait',
+        ]);
+
+        Log::info('Extraction terminée', [
+            'bulletin_id' => $this->bulletin->id,
+            'methode' => $resultat->methode,
+            'niveau_risque' => $resultat->niveauRisque,
+        ]);
+
         ApplyDecisionRuleJob::dispatchSync($this->bulletin->id, $resultat);
     }
 }

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\CatalogueAction;
 use App\Models\Commune;
 use App\Models\RegleDecision;
+use App\Models\SegmentAudio;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -64,7 +65,26 @@ class DatabaseSeeder extends Seeder
             'actif' => true,
         ]);
 
-        $this->command->info('Communes, catalogue et règles de démo créés. Prochaine étape : segments_audio.');
+        // Segments audio de la démo (Slot-Filling) : commune + risque + action.
+        // Ce sont des tonalités de substitution (440, 660 et 880 Hz) en attendant
+        // les enregistrements d'un locuteur natif bariba ; il suffira de remplacer
+        // les fichiers MP3 sans toucher au code.
+        foreach ([
+            ['commune', 'Banikoara', 'commune_banikoara_bariba.mp3'],
+            ['risque', 'secheresse_severe', 'risque_secheresse_severe_bariba.mp3'],
+            ['action', 'paillage_sol', 'action_paillage_sol_bariba.mp3'],
+        ] as [$typeSlot, $valeurSlot, $fichier]) {
+            SegmentAudio::create([
+                'langue' => 'bariba',
+                'type_slot' => $typeSlot,
+                'valeur_slot' => $valeurSlot,
+                'chemin_fichier' => storage_path("app/audio/segments/{$fichier}"),
+                'locuteur' => 'tonalite_substitution',
+                'duree_ms' => 2000,
+            ]);
+        }
+
+        $this->command->info('Communes, catalogue, règles et segments audio de démo créés.');
         $this->call(DemoSeeder::class);
     }
 }
